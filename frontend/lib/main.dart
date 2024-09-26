@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:sensors_plus/sensors_plus.dart';
+import 'package:frontend/utils/app_style.dart';
+import 'package:frontend/utils/size_config.dart';
+import 'package:shake/shake.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 import 'camera.dart';
@@ -23,8 +25,8 @@ class _MyAppState extends State<MyApp> {
   late FlutterTts _flutterTts;
   bool _isListening = false;
   String _text = "Press the button to simulate shake or shake the device to start listening";
-  double _shakeThreshold = 12.0; // Adjust the threshold as necessary
-  late StreamSubscription<AccelerometerEvent> _accelerometerSubscription;
+  
+   late ShakeDetector _shakeDetector;
 
   final String esp32CamUrl = 'http://192.168.1.75:81';  // Your ESP32-CAM IP and stream port
 
@@ -34,7 +36,12 @@ class _MyAppState extends State<MyApp> {
     _speech = stt.SpeechToText();
     _flutterTts = FlutterTts();
     _checkPermissions();
-    _startShakeDetection();
+
+    _shakeDetector = ShakeDetector.autoStart(
+      onPhoneShake: () {
+        _startListening();
+      },
+    );
   }
 
   void _checkPermissions() async {
@@ -43,16 +50,6 @@ class _MyAppState extends State<MyApp> {
     } else {
       print('Microphone permission denied');
     }
-  }
-
-  void _startShakeDetection() {
-    _accelerometerSubscription = accelerometerEvents.listen((AccelerometerEvent event) {
-      double shakeStrength = (event.x.abs() + event.y.abs() + event.z.abs());
-      if (shakeStrength > _shakeThreshold) {
-        _flutterTts.speak('Shake detected, starting speech recognition');
-        _startListening();
-      }
-    });
   }
 
   void _startListening() async {
@@ -93,43 +90,52 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
-    _accelerometerSubscription.cancel();
+    _shakeDetector.stopListening();
     _speech.stop();
     super.dispose();
   }
 
   @override
-Widget build(BuildContext context) {
-  return MaterialApp(
-    navigatorKey: navigatorKey,
-    initialRoute: '/',
-    routes: {
-      '/': (context) => Scaffold(
-        appBar: AppBar(title: Text('VisionAID')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Container(
-                padding: EdgeInsets.only(left: 25.0),
-                child: Text(
-                  _text,
-                  style: TextStyle(fontSize: 20.0),
+  Widget build(BuildContext context) {
+    SizeConfig().init(context);
+    return MaterialApp(
+      navigatorKey: navigatorKey,
+      initialRoute: '/',
+      routes: {
+        '/': (context) => Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  child: Text("VisionAid", style: mBold.copyWith(color: mPurple, fontSize: SizeConfig.blocksHorizontal!*14),),
                 ),
-              ),
-              SizedBox(height: 20),
-              Builder(
-                builder: (context) => ElevatedButton(
-                  onPressed: () => _simulateShake(), 
-                  child: Text('Simulate Shake'),
+                SizedBox(height: SizeConfig.blocksVertical!*4),
+                Container(
+                  margin: const EdgeInsets.only(left: 35.0, right: 30.0),
+                  padding: const EdgeInsets.only(top:15.0),
+                  child: Text(
+                    _text,
+                    style: mRegular.copyWith(color: mDarkpurple, fontSize: SizeConfig.blocksHorizontal!*4.5 ),
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(height: SizeConfig.blocksVertical!*4),
+                Builder(
+                  builder: (context) => Container(
+                    width: 180,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () => _simulateShake(), 
+                      child: Text('Simulate Shake', style: mMedium.copyWith(color: const Color.fromARGB(255, 107, 11, 152), fontSize: SizeConfig.blocksHorizontal!*3),),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-      '/camera': (context) => CameraScreen(),
-    },
-  );
-}
+        '/camera': (context) => CameraScreen(),
+      },
+    );
+  }
 }
