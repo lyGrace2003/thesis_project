@@ -96,6 +96,10 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+  void _simulateShake() {
+    _startListening();
+  }
+
   void _stopCameraAndGoBack() {
     // Stop the camera and navigate back to the landing page
     // You can add your logic here to stop the ESP32-CAM
@@ -130,33 +134,47 @@ class _CameraScreenState extends State<CameraScreen> {
       ),
       body: Container(
         padding: const EdgeInsets.only(top: 50.0),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: mPurple, width: 4), // Purple border
-          ),
-          child: ClipRect( 
-            child: AspectRatio(
-              aspectRatio: 16 / 9, // Set your desired aspect ratio
-              child: _isUsingEsp32Cam
-                  ? Mjpeg(
-                      isLive: true,
-                      stream: "$streamUrl/stream", // MJPEG stream URL for ESP32-CAM
-                      error: (context, error, stack) {
-                        return Text('Stream Error: $error');
-                      },
-                    )
-                  : FutureBuilder<void>(
-                      future: _initializeControllerFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.done) {
-                          return CameraPreview(_cameraController);
-                        } else {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                      },
-                    ),
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: mPurple, width: 4), // Purple border
+              ),
+              child: ClipRect( 
+                child: AspectRatio(
+                  aspectRatio: 16 / 9, // Set your desired aspect ratio
+                  child: _isUsingEsp32Cam
+                      ? Mjpeg(
+                          isLive: true,
+                          stream: "$streamUrl/stream", // MJPEG stream URL for ESP32-CAM
+                          error: (context, error, stack) {
+                            return Text('Stream Error: $error');
+                          },
+                        )
+                      : FutureBuilder<void>(
+                          future: _initializeControllerFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.done) {
+                              return CameraPreview(_cameraController);
+                            } else {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+                          },
+                        ),
+                ),
+              ),
             ),
-          ),
+            Builder(
+                  builder: (context) => Container(
+                    width: 180,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () => _simulateShake(), 
+                      child: Text('Simulate Shake', style: mMedium.copyWith(color: const Color.fromARGB(255, 107, 11, 152), fontSize: SizeConfig.blocksHorizontal!*3),),
+                    ),
+                  ),
+                ),
+          ],
         ),
       ),
     );

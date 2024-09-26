@@ -79,6 +79,7 @@ class _MyAppState extends State<MyApp> {
 
   void _navigateToCameraScreen() {
     try {
+      _shakeDetector.stopListening();
       navigatorKey.currentState?.pushNamed(
         '/camera',
         arguments: esp32CamUrl,
@@ -90,7 +91,6 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
-    _shakeDetector.stopListening();
     _speech.stop();
     super.dispose();
   }
