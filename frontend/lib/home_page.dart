@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:frontend/main.dart';
+import 'package:frontend/utils/app_style.dart';
+import 'package:frontend/utils/size_config.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 
@@ -151,6 +153,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    SizeConfig().init(context);
     return Scaffold(
       body: Center(
         child: Column(
@@ -159,16 +162,16 @@ class _MyHomePageState extends State<MyHomePage> {
             Container(
               child: Text(
                 "VisionAid",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.purple),
+                style:  mBold.copyWith(color: mPurple, fontSize: SizeConfig.blocksHorizontal! * 14),
               ),
             ),
-            SizedBox(height: 20),
+            SizedBox(height: SizeConfig.blocksVertical! * 4),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 30.0),
               padding: const EdgeInsets.only(top: 15.0),
               child: Text(
                 _text,
-                style: TextStyle(fontSize: 16, color: Colors.black54),
+                style: mRegular.copyWith(color: mDarkpurple, fontSize: SizeConfig.blocksHorizontal! * 4.5),
               ),
             ),
           ],
