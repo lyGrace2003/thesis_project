@@ -7,15 +7,20 @@ import os
 
 @csrf_exempt
 def upload_image(request):
-    if request.method == 'POST' and request.FILES.get('image'):
-        image = request.FILES['image']
-        
-        # Define the path where the image will be saved
-        save_path = os.path.join('media', 'uploads', image.name)
-        
-        # Save the image to the specified location
-        path = default_storage.save(save_path, ContentFile(image.read()))
-        
-        return JsonResponse({'status': 'success', 'path': path})
+    # Check if the request method is POST
+    if request.method == 'POST':
+        # Check if the 'image' file is included in the request
+        if 'image' in request.FILES:
+            image = request.FILES['image']
+            
+            # Define the path where the image will be saved
+            save_path = os.path.join('media', 'uploads', image.name)
+            
+            # Save the image to the specified location
+            path = default_storage.save(save_path, ContentFile(image.read()))
+            
+            return JsonResponse({'status': 'success', 'path': path})
+        else:
+            return JsonResponse({'status': 'failed', 'message': 'No image file provided'}, status=400)
     else:
-        return JsonResponse({'status': 'failed', 'message': 'No image provided'}, status=400)
+        return JsonResponse({'status': 'failed', 'message': 'Invalid request method'}, status=405)
