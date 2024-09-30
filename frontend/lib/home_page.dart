@@ -16,6 +16,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late FlutterTts _flutterTts;
   bool _isListening = false;
   bool _isActivated = false; 
+  bool _isInitializing  = false;
   String _text = "Listening for commands...";
   String? _lastCommand;
 
@@ -34,7 +35,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.didChangeDependencies();
     print("didChangeDependencies called");
     if (isSpeechRecognitionActiveScreen1 == true) {
-      _initSpeech();
+      _startListening();
     }
   }
 
@@ -42,23 +43,11 @@ class _MyHomePageState extends State<MyHomePage> {
     if (await Permission.microphone.request().isGranted) {
       print('Microphone permission granted');
       Future.delayed(Duration(milliseconds: 500), () {
-        _initSpeech();
+        _startListening();
       });
     } else {
       print('Microphone permission denied');
     }
-  }
-
-  void _initSpeech() async {
-    print("Initializing Speech Recognition");
-    bool available = await _speech.initialize(onStatus: onStatus);
-    if (available) {
-      _startListening(available);
-    } else {
-      print('Speech recognition not available.');
-      _flutterTts.speak('Speech recognition not available.');
-    }
-    setState(() {});
   }
 
   void _stopListening() async {
@@ -77,8 +66,11 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _startListening(bool available) async {
-    if (isSpeechRecognitionActiveScreen1 && !_isActivated && !isSpeechRecognitionActiveScreen2) {
+  void _startListening() async {
+    if (isSpeechRecognitionActiveScreen1 == true && _isActivated == false && 
+    _isListening == false && _isInitializing == false) {
+      _isInitializing  = true;
+      bool available = await _speech.initialize(onStatus: onStatus);
       print("Start Speech recognition");
       try {
         if (available) {
@@ -110,6 +102,8 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       } catch (e) {
         print('Error initializing speech recognition: $e');
+      }finally{
+        _isInitializing = false;
       }
     }
   }
@@ -118,7 +112,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (isSpeechRecognitionActiveScreen1) {
       print('onStatus [1]: $val');
       if (val == 'done' && !_isActivated) {
-        _startListening(true);
+        _startListening();
       } else if (val == 'notListening') {
         setState(() {
           _isListening = false; 
@@ -148,6 +142,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void dispose() {
     _speech.stop();
+    _speech.cancel();
     super.dispose();
   }
 

@@ -39,13 +39,14 @@ dependencies:
   camera: ^0.10.0+1
   permission_handler: ^11.3.1
   provider: ^6.1.2
-  http: ^0.13.5
+  http: ^0.13.6
   webview_flutter: ^4.9.0
   flutter_mjpeg: ^2.0.4
   flutter_tts: ^4.0.2
   google_fonts: ^4.0.4
   shake: ^1.0.1
   audioplayers: ^6.1.0
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

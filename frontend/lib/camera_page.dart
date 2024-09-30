@@ -9,6 +9,7 @@ import 'package:frontend/utils/size_config.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:http/http.dart' as http;
 
 class CameraScreen extends StatefulWidget {
   @override
@@ -28,9 +29,8 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _isListening = false;
   bool _isActivated = false;
   bool _cameraActivationFailed = false;
+  bool _isInitializing = false;
 
-  int _retryCount = 0;
-  final int _maxRetries = 3;
   String _text = "";
 
   @override
@@ -51,30 +51,19 @@ class _CameraScreenState extends State<CameraScreen> {
       _initializeMobileCamera();
     }
     if (isSpeechRecognitionActiveScreen2 == true) {
-      _initSpeech();
+      _startListening();
     }
   }
 
   void _checkPermissions() async {
     if (await Permission.microphone.request().isGranted) {
       print('Microphone permission granted');
-      Future.delayed(Duration(milliseconds: 500), () {
-          _initSpeech();
+      Future.delayed(const Duration(milliseconds: 500), () {
+          _startListening();
         });
     } else {
       print('Microphone permission denied');
     }
-  }
-
-  void _initSpeech() async {
-    bool available = await _s.initialize(onStatus: onStatus);
-    if (available) {
-      _startListening(available);
-    } else {
-      print('Speech recognition not available.');
-      _flutterTts.speak('Speech recognition not available.');
-    }
-    setState(() {});
   }
 
   Future<void> _initializeMobileCamera() async {
@@ -123,17 +112,25 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   void onError(SpeechRecognitionError error) {
-  print('Error during speech recognition: ${error.errorMsg}');
-}
+    print('Error during speech recognition: ${error.errorMsg}');
+    if (error.errorMsg == 'speech timeout' || error.errorMsg == 'microphone is busy') {
+      _startListening(); 
+    }
+  }
 
 
-  void _startListening(bool available) async {
-    if (isSpeechRecognitionActiveScreen2 == true && _isActivated == false && isSpeechRecognitionActiveScreen1 == false) {
-      print("Start Speech recognition");
+  void _startListening() async {
+    if (isSpeechRecognitionActiveScreen2 == true && _isActivated == false && 
+      _isListening == false && _isInitializing == false) {
+
+      _isInitializing = true;
+      bool available = await _s.initialize(onStatus: onStatus, onError: onError);
       try {
         if (available) {
+          print("Start Speech recognition");
           setState(() {
             _isListening = true;
+            _isActivated = false;
             _text = "";
           });
           _s.listen(onResult: (result) {
@@ -143,8 +140,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
               if (_text.toLowerCase().contains('capture') && !_isActivated) {
                 print('Frame captured');
-                _startListening(available);
-
+                captureImageFromESP32();
                 _flutterTts.speak('Frame captured');
               } else if (_text.toLowerCase().contains('stop') && !_isActivated) {
                 _text = '';
@@ -159,6 +155,8 @@ class _CameraScreenState extends State<CameraScreen> {
         }
       } catch (e) {
         print('Error initializing speech recognition: $e');
+      }finally{
+         _isInitializing = false;
       }
     }
   }
@@ -166,8 +164,8 @@ class _CameraScreenState extends State<CameraScreen> {
   void onStatus(String val) {
     if(isSpeechRecognitionActiveScreen2 == true){
       print('onStatus [2]: $val');
-      if (val == 'done' && _isActivated == true) {
-          _startListening(true);
+      if (val == 'done' && _isActivated == false) {
+          _startListening();
       } else if (val == 'notListening') {
         setState(() {
           _isListening = false;
@@ -175,6 +173,7 @@ class _CameraScreenState extends State<CameraScreen> {
       }
     }
   }
+  
 
   void _playFailureSound() async {
     if (!_cameraActivationFailed) {
@@ -203,6 +202,23 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+  Future<void> captureImageFromESP32() async {
+    final String esp32Ip = 'http://192.168.1.75/capture'; 
+
+    try {
+      // Sending POST request
+      final response = await http.post(Uri.parse(esp32Ip));
+      if (response.statusCode == 200) {
+        print('Capture command sent successfully');
+      } else {
+        print('Failed to send capture command: ${response.statusCode}');
+      }
+      _startListening();
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
+
 
   @override
   void dispose() {
@@ -210,6 +226,7 @@ class _CameraScreenState extends State<CameraScreen> {
       _cameraController.dispose();
     }
     _s.stop();
+    _s.cancel();
     super.dispose();
   }
 
@@ -262,10 +279,10 @@ class _CameraScreenState extends State<CameraScreen> {
                 ),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Text(
               _text,
-              style: TextStyle(fontSize: 20, color: Colors.white),
+              style: const TextStyle(fontSize: 20, color: Colors.white),
             ),
           ],
         ),

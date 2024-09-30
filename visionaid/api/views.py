@@ -1,23 +1,21 @@
-from django.shortcuts import render
+# api/views.py
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-import cv2
-import numpy as np
-from your_ocr_model import process_frame  # Import your OCR processing function
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import os
 
-@csrf_exempt  # Disable CSRF validation for testing purposes (not recommended for production)
-def receive_frame(request):
-    if request.method == 'POST':
-        # Read the image from the request
-        file = request.FILES['frame']
-        # Convert the image to a format suitable for processing
-        img_array = np.frombuffer(file.read(), np.uint8)
-        frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-
-        # Process the frame with your OCR model
-        text_output = process_frame(frame)
-
-        return JsonResponse({'text': text_output})
-
-    return JsonResponse({'error': 'Invalid request'}, status=400)
-
+@csrf_exempt
+def upload_image(request):
+    if request.method == 'POST' and request.FILES.get('image'):
+        image = request.FILES['image']
+        
+        # Define the path where the image will be saved
+        save_path = os.path.join('media', 'uploads', image.name)
+        
+        # Save the image to the specified location
+        path = default_storage.save(save_path, ContentFile(image.read()))
+        
+        return JsonResponse({'status': 'success', 'path': path})
+    else:
+        return JsonResponse({'status': 'failed', 'message': 'No image provided'}, status=400)
