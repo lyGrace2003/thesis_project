@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mjpeg/flutter_mjpeg.dart';  // Import the flutter_mjpeg package
 import 'package:camera/camera.dart';
@@ -7,6 +8,7 @@ import 'package:frontend/utils/size_config.dart';
 import 'package:shake/shake.dart'; // Import the shake package
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:http/http.dart' as http;
 
 class CameraScreen extends StatefulWidget {
   @override
@@ -17,6 +19,7 @@ class _CameraScreenState extends State<CameraScreen> {
   late String streamUrl;
   late CameraController _cameraController;
   late Future<void> _initializeControllerFuture;
+   late AudioPlayer _audioPlayer;
   
   bool _isUsingEsp32Cam = true; // Track whether using ESP32-CAM or mobile camera
 
@@ -24,6 +27,10 @@ class _CameraScreenState extends State<CameraScreen> {
   late stt.SpeechToText _speech;
   late FlutterTts _flutterTts;
   bool _isListening = false;
+   bool _isActivated = false;
+  bool _cameraActivationFailed = false;
+
+  String _text = "";
 
   @override
   void didChangeDependencies() {
@@ -74,17 +81,22 @@ class _CameraScreenState extends State<CameraScreen> {
     if (!_isListening) {
       bool available = await _speech.initialize();
       if (available) {
-        setState(() => _isListening = true);
+        setState((){
+          _isListening = true;
+          _text = "";
+          });
         _speech.listen(onResult: (result) {
-          String text = result.recognizedWords;
-          print('Detected words: $text');
+          _text = result.recognizedWords;
+          print('Detected words: $_text');
 
-          if (text.toLowerCase().contains('activate')) {
+          if (_text.toLowerCase().contains('capture')) {
             // Perform your activation task here
             print('Activating task...');
-            _flutterTts.speak('Activating task');
+            _flutterTts.speak('Image captured');
 
-          } else if (text.toLowerCase().contains('stop')) {
+            captureImageFromESP32();
+            
+          } else if (_text.toLowerCase().contains('stop')) {
 
             print('Stopping ESP32-CAM and returning to landing page');
             
@@ -100,10 +112,47 @@ class _CameraScreenState extends State<CameraScreen> {
     _startListening();
   }
 
-  void _stopCameraAndGoBack() {
-    // Stop the camera and navigate back to the landing page
-    // You can add your logic here to stop the ESP32-CAM
-    Navigator.of(context).pushNamed('/');
+void _playFailureSound() async {
+    if (!_cameraActivationFailed) {
+      _cameraActivationFailed = true;
+      await _audioPlayer.play(AssetSource('sounds/error.mp3'));
+      print("Camera activation failed");
+      await _flutterTts.speak('Camera activation failed, returning to landing page');
+
+    }
+  }
+
+void _stopCameraAndGoBack()async{
+    try {
+      print("Navigating to landing page");
+      await _speech.stop();  
+      Navigator.of(context).pushReplacementNamed('/').then((_) {
+        setState(() {
+          _isActivated = false; 
+          _text = "";
+          _cameraActivationFailed = false;
+        });
+      });
+    } catch (e) {
+      print('Navigation error: $e');
+    }
+  }
+
+Future<void> captureImageFromESP32() async {
+    final String esp32Ip = 'http://192.168.1.75/capture'; 
+
+    try {
+      // Sending POST request
+      final response = await http.post(Uri.parse(esp32Ip));
+      if (response.statusCode == 200) {
+        print('Capture command sent successfully');
+      } else {
+        print('Failed to send capture command: ${response.statusCode}');
+      }
+      _startListening();
+    } catch (e) {
+      print('Error: $e');
+    }
   }
 
   @override
