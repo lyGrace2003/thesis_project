@@ -7,9 +7,7 @@ import os
 
 @csrf_exempt
 def upload_image(request):
-    # Check if the request method is POST
     if request.method == 'POST':
-        # Check if the 'image' file is included in the request
         if 'image' in request.FILES:
             image = request.FILES['image']
             

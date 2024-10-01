@@ -142,6 +142,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 print('Frame captured');
                 captureImageFromESP32();
                 _flutterTts.speak('Frame captured');
+                _startListening();
               } else if (_text.toLowerCase().contains('stop') && !_isActivated) {
                 _text = '';
                 print('Returning to landing page');
